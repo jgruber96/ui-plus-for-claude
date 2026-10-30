@@ -95,8 +95,8 @@ Then move `build/UI+ for Claude.app` to Applications and open it.
 UI+ for Claude also runs on Windows. The add-on itself is the same; only the installer differs.
 
 1. Download **UI-Plus-for-Claude-Windows.zip** from the latest release (or run `bash Windows/build-zip.sh` in a clone) and unzip it.
-2. Double-click **install.cmd**.
-3. Quit Claude completely (File → Exit, or right-click the tray icon → Quit) and open it again.
+2. Double-click **install.cmd**. If Claude is open, it restarts with UI+.
+3. If UI+ doesn't show when you open Claude later, sign out of Windows and back in once.
 
 To remove it, click **Uninstall…** in the usage popover, or double-click **uninstall.cmd** (also in `%LOCALAPPDATA%\UI+ for Claude`) and restart Claude.
 

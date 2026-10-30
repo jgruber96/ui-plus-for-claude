@@ -14,7 +14,7 @@
     - MSIX package:       %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude
                           (the package redirects %APPDATA% writes there)
 
-  Usage:  powershell -ExecutionPolicy Bypass -File ui-plus.ps1 install|uninstall|status|version|check-update
+  Usage:  powershell -ExecutionPolicy Bypass -File ui-plus.ps1 install|uninstall|restart|status|version|check-update
 #>
 param([Parameter(Position = 0)][string]$Command = '')
 
@@ -156,11 +156,32 @@ function Test-Update {
   if ("$choice" -eq 'OK') { Start-Process $ReleasesUrl }
 }
 
+# Restarts a running Claude with REACT_PROFILE=1 in its environment, so the
+# add-on shows right away. Apps started before the install (and anything
+# Explorer starts before it picks up the new variable) don't have it yet;
+# from the next Windows sign-in on, every start does.
+function Restart-Claude {
+  $running = @(Get-Process claude -ErrorAction SilentlyContinue)
+  if ($running.Count -eq 0) { return $false }
+  $exe = ($running | Where-Object { $_.Path } | Select-Object -First 1).Path
+  if (-not $exe) { return $false }
+  $running | Stop-Process -Force
+  Start-Sleep -Seconds 2
+  $env:REACT_PROFILE = '1'
+  Start-Process $exe
+  return $true
+}
+
 switch ($Command) {
-  'install'      { Install-UiPlus; Write-Host "`n$Name is installed. Quit Claude completely (File > Exit, or right-click its tray icon > Quit) and open it again." }
+  'install'      {
+    Install-UiPlus
+    if (Restart-Claude) { Write-Host "`n$Name is installed. Claude restarted with it." }
+    else { Write-Host "`n$Name is installed. Open Claude and it shows in the sidebar. (If it doesn't, sign out of Windows and back in once.)" }
+  }
+  'restart'      { if (-not (Restart-Claude)) { Write-Host 'Claude is not running.' } }
   'uninstall'    { Uninstall-UiPlus; Write-Host "`n$Name is removed. Quit Claude completely and open it again." }
   'status'       { Get-Status }
   'version'      { Get-Version }
   'check-update' { Test-Update }
-  default        { Write-Error 'usage: ui-plus.ps1 install|uninstall|status|version|check-update'; exit 64 }
+  default        { Write-Error 'usage: ui-plus.ps1 install|uninstall|restart|status|version|check-update'; exit 64 }
 }
