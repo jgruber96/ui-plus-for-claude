@@ -6,7 +6,7 @@
   "content_scripts": [
     {
       "matches": ["https://claude.ai/*"],
-      "js": ["widget.js"],
+      "js": ["widget.js", "diagnose.js"],
       "css": ["widget.css"],
       "run_at": "document_idle"
     }
