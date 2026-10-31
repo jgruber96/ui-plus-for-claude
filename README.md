@@ -100,7 +100,7 @@ UI+ for Claude also runs on Windows. The add-on itself is the same; only the ins
 
 To remove it, click **Uninstall…** in the usage popover, or double-click **uninstall.cmd** (also in `%LOCALAPPDATA%\UI+ for Claude`) and restart Claude.
 
-How it works on Windows: `Windows/ui-plus.ps1` copies `Extension/` into Claude's data folder (`%APPDATA%\Claude`, or for the Microsoft Store/MSIX version `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude`) under `extensions\fmkadmapgofadopljbjfkapdkoienihi`, and sets `REACT_PROFILE=1` as a user environment variable. Windows keeps that variable across sign-ins, so no login item is needed. A scheduled task, **UI+ for Claude update check**, checks GitHub once a day for a newer release.
+How it works on Windows: `Windows/ui-plus.ps1` copies `Extension/` into Claude's data folder (`%APPDATA%\Claude`, or for the Microsoft Store/MSIX version `%LOCALAPPDATA%\Claude-Data\claude_*`) under `extensions\fmkadmapgofadopljbjfkapdkoienihi`, and sets `REACT_PROFILE=1` as a user environment variable. Windows keeps that variable across sign-ins, so no login item is needed. A scheduled task, **UI+ for Claude update check**, checks GitHub once a day for a newer release.
 
 ## Private by design
 

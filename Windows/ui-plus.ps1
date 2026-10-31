@@ -9,10 +9,9 @@
   by itself, so no login item is needed for that; a daily scheduled task only
   checks GitHub for a newer release.
 
-  Claude for Windows comes in two flavours, and this handles both:
-    - classic installer:  %APPDATA%\Claude
-    - MSIX package:       %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude
-                          (the package redirects %APPDATA% writes there)
+  Claude for Windows comes as a classic installer or an MSIX (Store)
+  package, which keep their data in different places; see
+  Get-ClaudeDataCandidates.
 
   Usage:  powershell -ExecutionPolicy Bypass -File ui-plus.ps1 install|uninstall|restart|status|version|check-update
 #>
@@ -44,26 +43,39 @@ function Get-Version {
   (Get-Content $manifest -Raw | ConvertFrom-Json).version
 }
 
-# Every Claude data folder that exists, classic and MSIX. If Claude has never
-# run there is none yet, so fall back to the classic location.
-function Get-ClaudeDataRoots {
-  $roots = @()
-  $classic = Join-Path $env:APPDATA 'Claude'
-  if (Test-Path $classic) { $roots += $classic }
+# Places Claude for Windows keeps its data folder:
+#   - classic installer:  %APPDATA%\Claude
+#   - MSIX (Store) package, Claude 4.4212: %LOCALAPPDATA%\Claude-Data\claude_<publisher id>
+#   - MSIX, earlier:      %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude
+#                         (the package redirected %APPDATA% writes there)
+function Get-ClaudeDataCandidates {
+  $c = @(Join-Path $env:APPDATA 'Claude')
+  $dataHome = Join-Path $env:LOCALAPPDATA 'Claude-Data'
+  if (Test-Path $dataHome) {
+    $c += @(Get-ChildItem $dataHome -Directory -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+  }
   $packages = Join-Path $env:LOCALAPPDATA 'Packages'
   if (Test-Path $packages) {
-    Get-ChildItem $packages -Directory -ErrorAction SilentlyContinue |
+    $c += @(Get-ChildItem $packages -Directory -ErrorAction SilentlyContinue |
       Where-Object { $_.Name -like 'Claude_*' -or $_.Name -like 'Anthropic.Claude*' } |
-      ForEach-Object {
-        $r = Join-Path $_.FullName 'LocalCache\Roaming\Claude'
-        if (Test-Path $r) { $roots += $r }
-      }
+      ForEach-Object { Join-Path $_.FullName 'LocalCache\Roaming\Claude' })
   }
-  if ($roots.Count -eq 0) { $roots += $classic }
+  return $c
+}
+
+# The data folders Claude actually uses: those with Chromium's "Local State"
+# file (a folder can exist without being used). If Claude has never run
+# there is none yet, so fall back to the classic location.
+function Get-ClaudeDataRoots {
+  $roots = @(Get-ClaudeDataCandidates | Where-Object { Test-Path (Join-Path $_ 'Local State') })
+  if ($roots.Count -eq 0) { $roots = @(Join-Path $env:APPDATA 'Claude') }
   return $roots
 }
 
-function Get-ExtensionDirs { Get-ClaudeDataRoots | ForEach-Object { Join-Path $_ "extensions\$ExtensionId" } }
+function Get-ExtensionDirs([switch]$All) {
+  $roots = if ($All) { Get-ClaudeDataCandidates } else { Get-ClaudeDataRoots }
+  $roots | ForEach-Object { Join-Path $_ "extensions\$ExtensionId" }
+}
 
 # Tell Explorer the environment changed, so apps it starts from now on see
 # REACT_PROFILE without signing out.
@@ -128,7 +140,7 @@ function Uninstall-UiPlus {
   Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
   [Environment]::SetEnvironmentVariable('REACT_PROFILE', $null, 'User')
   Send-EnvironmentChange
-  foreach ($dir in Get-ExtensionDirs) { if (Test-Path $dir) { Remove-Item $dir -Recurse -Force } }
+  foreach ($dir in Get-ExtensionDirs -All) { if (Test-Path $dir) { Remove-Item $dir -Recurse -Force } }
   if (Test-Path $StateDir) { Remove-Item $StateDir -Recurse -Force }
   # Leave the running script's own folder alone if we're running from it.
   if ((Test-Path $InstallDir) -and ((Resolve-Path $Here).Path -ne (Resolve-Path $InstallDir).Path)) {
